@@ -8,6 +8,6 @@ namespace OpenAPI2XSD.Parser
 {
     public interface IParser
     {
-        bool Parse(string inputFile, string outputDirectory);
+        bool Parse(string[] inputFiles, string outputDirectory);
     }
 }

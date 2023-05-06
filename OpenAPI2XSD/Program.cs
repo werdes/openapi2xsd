@@ -33,9 +33,15 @@ namespace OpenAPI2XSD
                 .ConfigureLogging(loggingBuilder =>
                 {
                     loggingBuilder
-                        .AddFilter("Microsoft", LogLevel.None)
+                        .AddFilter("Default", LogLevel.Debug)
+                        .AddFilter("Microsoft", LogLevel.Debug)
                         .AddFilter("System", LogLevel.Warning)
-                        .AddConsole();
+                        .SetMinimumLevel(LogLevel.Debug)
+                        .AddSimpleConsole(options =>
+                        {
+                            options.SingleLine = true;
+                            options.TimestampFormat = "HH:mm:ss |";
+                        });
                 })
                 .ConfigureAppConfiguration((_, configuration) =>
                 {

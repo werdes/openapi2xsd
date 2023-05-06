@@ -28,6 +28,12 @@ namespace OpenAPI2XSD.Parser
             _openApi2XsdParser = openApi2XsdParser;
         }
 
+        /// <summary>
+        /// Returns a parser specified by given mode
+        /// </summary>
+        /// <param name="mode"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentException">on undefined parser</exception>
         public IParser GetParserByMode(Enums.Mode mode)
         {
             switch (mode)

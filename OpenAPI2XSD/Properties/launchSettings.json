@@ -2,7 +2,7 @@
   "profiles": {
     "OpenAPI2XSD": {
       "commandName": "Project",
-      "commandLineArgs": "--mode openapi2xsd --input \"D:\\files\\openapi2xsd\\swagger.yaml\""
+      "commandLineArgs": "--mode openapi2xsd --input:0 \"D:\\files\\openapi2xsd\\swagger.yaml\" --input:1 \"D:\\files\\openapi2xsd\\schemas.yaml\" --limitDescriptionLength 100 --includeDescriptions false"
     }
   }
 }

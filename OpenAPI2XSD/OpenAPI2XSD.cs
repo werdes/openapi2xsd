@@ -32,14 +32,14 @@ namespace OpenAPI2XSD
         {
             try
             {
-                string inputFile = GetInputFile();
+                string[] inputFiles = GetInputFiles();
                 string outputDirectory = GetOutputDirectory();
                 Enums.Mode mode = GetMode();
 
                 IParser parser = _parserFactory.GetParserByMode(mode);
                 if (parser != null)
                 {
-                    parser.Parse(inputFile, outputDirectory);
+                    parser.Parse(inputFiles, outputDirectory);
                 }
                 else throw new ArgumentException($"Parser is unspecified");
             }
@@ -54,13 +54,16 @@ namespace OpenAPI2XSD
         /// </summary>
         /// <returns>Input file</returns>
         /// <exception cref="ArgumentException"></exception>
-        private string GetInputFile()
+        private string?[] GetInputFiles()
         {
-            string? configValue = _configuration["input"];
-            if (configValue == null || !File.Exists(configValue))
-                throw new ArgumentException("No input specified or file doesn't exist");
+            string?[] files = _configuration.GetSection("input")
+                                            .GetChildren()
+                                            .Select(x => x.Value)
+                                            .ToArray();
+            if (files == null || files.Length == 0 || files.Any(x => !File.Exists(x))) 
+                throw new ArgumentException("No input specified or one of the files doesn't exist");
 
-            return configValue;
+            return files;
         }
 
         /// <summary>
@@ -89,7 +92,7 @@ namespace OpenAPI2XSD
             string? configValue = _configuration["output"];
             if (configValue == null)
             {
-                configValue = Path.GetDirectoryName(GetInputFile());
+                configValue = Path.GetDirectoryName(GetInputFiles().First());
                 _logger.LogInformation($"No output directory specified, using input directory {configValue}");
             }
 
