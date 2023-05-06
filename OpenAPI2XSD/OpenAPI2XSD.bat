@@ -3,6 +3,7 @@ setlocal EnableDelayedExpansion
 
 set PARAM=
 set COUNTER=0
+set EXECUTABLE=%~dp0OpenAPI2XSD.exe
 
 :NextParameter
 if "%~1" == "" goto Done
@@ -13,5 +14,5 @@ goto NextParameter
 
 :Done
 
-echo "%~dp0OpenAPI2XSD.exe" %PARAM%
+"%EXECUTABLE%" %PARAM%
 pause

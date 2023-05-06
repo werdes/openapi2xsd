@@ -61,15 +61,19 @@ namespace OpenAPI2XSD.Parser
 
 
             // Some fixes for common mistakes in references
-            foreach (string schemaKey in openApiDocument.Components.Schemas.Keys)
+            if (openApiDocument.Components != null && openApiDocument.Components.Schemas != null)
             {
-                OpenApiSchema? schema = openApiDocument.Components.Schemas[schemaKey];
-                if (schema.Reference != null && schema.Reference.ExternalResource != null)
+                foreach (string schemaKey in openApiDocument.Components.Schemas.Keys)
                 {
-                    // /#/ is not resolvable, since the leading slash will be part of the location
-                    schema.Reference.ExternalResource = schema.Reference.ExternalResource.Replace("/#/", "#/");
+                    OpenApiSchema? schema = openApiDocument.Components.Schemas[schemaKey];
+                    if (schema.Reference != null && schema.Reference.ExternalResource != null)
+                    {
+                        // /#/ is not resolvable, since the leading slash will be part of the location
+                        schema.Reference.ExternalResource = schema.Reference.ExternalResource.Replace("/#/", "#/");
+                    }
                 }
             }
+            else throw new ArgumentException($"[{inputFile}] does not contain any component schemas");
 
             return openApiDocument;
         }
