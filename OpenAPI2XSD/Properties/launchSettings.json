@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "OpenAPI2XSD": {
+      "commandName": "Project",
+      "commandLineArgs": "--mode openapi2xsd --input \"D:\\files\\openapi2xsd\\swagger.yaml\""
+    }
+  }
+}
