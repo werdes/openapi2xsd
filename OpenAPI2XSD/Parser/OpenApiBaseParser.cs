@@ -70,6 +70,13 @@ namespace OpenAPI2XSD.Parser
                     {
                         // /#/ is not resolvable, since the leading slash will be part of the location
                         schema.Reference.ExternalResource = schema.Reference.ExternalResource.Replace("/#/", "#/");
+
+                    }
+
+                    // Local reference resolving requires a location in a workspace
+                    if (schema.Reference != null && schema.Reference.ExternalResource == null)
+                    {
+                        schema.Reference.ExternalResource = location;
                     }
                 }
             }

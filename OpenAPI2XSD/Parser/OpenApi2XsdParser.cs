@@ -51,16 +51,19 @@ namespace OpenAPI2XSD.Parser
 
                 if (openApiDocument != null && openApiDocument.Components != null && openApiDocument.Components.Schemas != null)
                 {
-                    foreach (string schemaKey in openApiDocument.Components.Schemas.Keys)
+                    foreach (string schemaKey in openApiDocument.Components.Schemas.Keys.Where(x => x == "ReturnRequestList"))
                     {
                         OpenApiSchema schema = openApiDocument.Components.Schemas[schemaKey];
                         _logger.LogDebug($"Reading schema [{schemaKey}]");
 
                         XDocument document = new XDocument();
+                        Dictionary<string, XContainer> typeDefinitions = new Dictionary<string, XContainer>();
+                        List<string> stack = new List<string>();
                         XElement rootElement = new XElement(NS + "schema",
                             new XAttribute(XNamespace.Xmlns + "xs", NS),
-                            GetElementFromSchema(schemaKey, schema, null, openApiWorkspace)
+                            GetElementFromSchema(schemaKey, schema, null, openApiWorkspace, typeDefinitions, string.Empty, stack)
                         );
+                        rootElement.Add(typeDefinitions.Values);
                         document.Add(rootElement);
 
                         SaveDocument(document, schema, outputDirectory);
@@ -124,11 +127,19 @@ namespace OpenAPI2XSD.Parser
         /// <param name="schema"></param>
         /// <param name="openApiWorkspace"></param>
         /// <returns></returns>
-        private XContainer? GetElementFromSchema(string key, OpenApiSchema schema, OpenApiSchema parentSchema, OpenApiWorkspace openApiWorkspace)
+        private XContainer? GetElementFromSchema(string key, OpenApiSchema schema, OpenApiSchema parentSchema, OpenApiWorkspace openApiWorkspace, Dictionary<string, XContainer> typeDefinitions, string path, List<string> stack)
         {
             XElement element = new XElement(NS + "element", new XAttribute("name", key));
             bool minOccursSet = false;
             bool includeDescriptions = _configuration.GetValue<bool>(Constants.Options.IncludeDescriptions, false);
+            path = path + "/" + key;
+
+            List<string> newStack = new List<string>(stack.Count + 1);
+            newStack.AddRange(stack);
+            newStack.Add(key);
+
+
+            // _logger.LogDebug($"Resolving [{path}]");
 
             // Set minOccurs for required properties
             if (parentSchema != null && parentSchema.Required.Contains(key))
@@ -154,10 +165,45 @@ namespace OpenAPI2XSD.Parser
             // Object Properties -> recursively load child properties
             if (schema.Type == "object")
             {
+
                 foreach (string propertyKey in schema.Properties.Keys)
                 {
-                    XContainer? container = GetElementFromSchema(propertyKey, schema.Properties[propertyKey], schema, openApiWorkspace);
-                    if (container != null) children.Add(container);
+                    OpenApiSchema propertySchema = schema.Properties[propertyKey];
+
+                    if (propertySchema.Reference != null)
+                    {
+                        string typeKey = propertySchema.Reference.Id.ReduceToSimple();
+
+                        if (typeDefinitions.ContainsKey(typeKey))
+                        {
+                            children.Add(new XElement(NS + "element",
+                                new XAttribute("name", propertyKey),
+                                new XAttribute("type", typeKey)));
+                        }
+                        else
+                        {
+                            typeDefinitions.Add(typeKey, null);
+                            XContainer? container = GetElementFromSchema(propertyKey, schema.Properties[propertyKey], schema, openApiWorkspace, typeDefinitions, path, newStack);
+                            XContainer?[] childDescendants = container.Elements().SelectMany(x => x.Elements()).ToArray();
+
+                            XContainer typeContainer = new XElement(NS + "complexType",
+                                new XAttribute("name", typeKey),
+                                childDescendants);
+
+                            typeDefinitions[typeKey] = typeContainer;
+                            children.Add(new XElement(NS + "element",
+                                new XAttribute("name", propertyKey),
+                                new XAttribute("type", typeKey)));
+                        }
+                    }
+                    else
+                    {
+                        XContainer? container = GetElementFromSchema(propertyKey, schema.Properties[propertyKey], schema, openApiWorkspace, typeDefinitions, path, newStack);
+                        if (container != null)
+                        {
+                            children.Add(container);
+                        }
+                    }
                 }
 
                 element.Add(
@@ -166,25 +212,43 @@ namespace OpenAPI2XSD.Parser
                             children)
                     )
                 );
+                //}
+
             }
             else if (schema.Type == "array")
             {
-                XContainer? arrayDescendant = GetElementFromSchema(key, schema.Items, schema, openApiWorkspace);
-                List<XElement> arrayDescandantChildren = arrayDescendant.Elements().ToList();
-
-                if(!minOccursSet)
+                if (!minOccursSet)
                 {
                     element.Add(new XAttribute("minOccurs", "0"));
                 }
 
-                element.Add( 
-                    new XAttribute("maxOccurs", "unbounded"),
-                    arrayDescandantChildren
+                element.Add(
+                    new XAttribute("maxOccurs", "unbounded")
                 );
 
-                if (!string.IsNullOrEmpty(schema.Items.Type))
+                if (schema.Items != null)
                 {
-                    element.Add(new XAttribute("type", GetAtomicType(schema.Items.Type, schema.Items.Format)));
+                    if (schema.Items.Reference != null)
+                    {
+                        if (typeDefinitions.ContainsKey(schema.Items.Reference?.Id.ReduceToSimple()))
+                        {
+                            children.Add(new XElement(NS + "element",
+                                new XAttribute("name", key),
+                                new XAttribute("type", schema.Items.Reference.Id.ReduceToSimple())));
+                        }
+                        else
+                        {
+                            List<XObject> referenceObjects = ResolveReference(schema.Items, openApiWorkspace, key, typeDefinitions, path, newStack);
+                            element.Add(referenceObjects);
+                        }
+                    }
+                    else
+                    {
+                        if (!string.IsNullOrEmpty(schema.Items.Type))
+                        {
+                            element.Add(new XAttribute("type", GetAtomicType(schema.Items.Type, schema.Items.Format)));
+                        }
+                    }
                 }
             }
             else if (!string.IsNullOrEmpty(schema.Type))
@@ -195,10 +259,10 @@ namespace OpenAPI2XSD.Parser
             }
             else if (schema.Reference != null)
             {
-                List<XContainer> resolvedDescendants = ResolveReference(schema, openApiWorkspace, key);
-                foreach (XContainer descendantContainer in resolvedDescendants)
+                List<XObject> resolvedDescendants = ResolveReference(schema, openApiWorkspace, key, typeDefinitions, path, newStack);
+                foreach (XObject descendantObjects in resolvedDescendants)
                 {
-                    element.Add(descendantContainer);
+                    element.Add(descendantObjects);
                 }
             }
 
@@ -212,20 +276,34 @@ namespace OpenAPI2XSD.Parser
         /// <param name="openApiWorkspace"></param>
         /// <param name="key"></param>
         /// <returns></returns>
-        private List<XContainer> ResolveReference(OpenApiSchema schema, OpenApiWorkspace openApiWorkspace, string key)
+        private List<XObject> ResolveReference(OpenApiSchema schema, OpenApiWorkspace openApiWorkspace, string key, Dictionary<string, XContainer> typeDefinitions, string path, List<string> stack)
         {
-            List<XContainer> containers = new List<XContainer>();
+            List<XObject> containers = new List<XObject>();
             IOpenApiReferenceable? resolvable = openApiWorkspace.ResolveReference(schema.Reference);
             if (resolvable != null && resolvable is OpenApiSchema)
             {
                 OpenApiSchema resolvedSchema = (OpenApiSchema)resolvable;
-                XContainer? childElement = GetElementFromSchema(key, resolvedSchema, schema, openApiWorkspace);
-                XContainer?[] childDescendants = childElement?.Elements().ToArray();
-
-                foreach (XElement descendant in childDescendants)
+                string schemaKey = schema.Reference.Id.ReduceToSimple();
+                if (!typeDefinitions.ContainsKey(schemaKey))
                 {
-                    containers.Add(descendant);
+                    typeDefinitions.Add(schemaKey, null);
+                    XContainer? childElement = GetElementFromSchema(key, resolvedSchema, schema, openApiWorkspace, typeDefinitions, path, stack);
+                    XContainer?[] childDescendants = childElement.Elements().SelectMany(x => x.Elements()).ToArray();
+
+                    XContainer typeContainer = new XElement(NS + "complexType",
+                        new XAttribute("name", schemaKey),
+                        childDescendants);
+                    typeDefinitions[schemaKey] = typeContainer;
                 }
+
+                containers.Add(new XAttribute("type", schemaKey));
+
+                //foreach (XElement descendant in childDescendants)
+                //{
+                //    containers.Add(descendant);
+                //}
+
+
             }
             else throw new ArgumentException($"Unsresolved reference at [{schema.Reference.ReferenceV3}]");
             return containers;

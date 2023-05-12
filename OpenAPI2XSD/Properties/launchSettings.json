@@ -2,7 +2,11 @@
   "profiles": {
     "OpenAPI2XSD": {
       "commandName": "Project",
-      "commandLineArgs": "--mode openapi2xsd --input:0 \"D:\\files\\openapi2xsd\\api-with-examples.yaml\""
+      "commandLineArgs": "--mode openapi2xsd --input:0 \"D:\\files\\openapi2xsd\\aioa-swagger.json\""
+    },
+    "Laptop": {
+      "commandName": "Project",
+      "commandLineArgs": "--mode openapi2xsd --input:0 \"C:\\Files\\openapi2xsd\\petstore-expanded.json\""
     }
   }
 }

@@ -69,7 +69,7 @@ namespace OpenAPI2XSD
         /// <summary>
         /// Reads the mode parameter
         /// </summary>
-        /// <returns>specified mode enum, OpenApi2Xsd if unspecified</returns>
+        /// <returns>specified mode enum, OpenApi2XsdNoReferences if unspecified</returns>
         /// <exception cref="ArgumentException"></exception>
         private Enums.Mode GetMode()
         {
@@ -77,7 +77,7 @@ namespace OpenAPI2XSD
             string? configValue = _configuration["mode"];
             if (configValue == null || !Enum.TryParse<Enums.Mode>(configValue, out mode))
             {
-                mode = Enums.Mode.OpenApi2Xsd;
+                mode = Enums.Mode.OpenApi2XsdNoReferences;
                 _logger.LogInformation($"No mode specified, using default [{mode}]");
             }
             return mode;

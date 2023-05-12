@@ -12,7 +12,9 @@ CLI tool for converting OpenAPI (formerly Swagger) component schemas into XML Sc
 ### Other options
 | Parameter | Value |  | Example |
 |--|--|--|--|
-| `--mode` | Converter mode | **Default**: OpenApi2Xsd, Available options: `OpenApi2Xsd` | `--mode OpenApi2Xsd`   |
+| `--mode` | Converter mode | **Default**: OpenApi2XsdNoReferences, Available options: `OpenApi2XsdNoReferences` | `--mode OpenApi2XsdNoReferences`   |
 | `--includeDescriptions` | Include Annotation-Elements in the .xsd-Result | **Default** : false | `--includeDescriptions true` |
 | `--limitDescriptionLength` | Limit the length of the annotations | **Default** : Int32 maximum | `--limitDescriptionLength 250` |
 
+### Modes
+- `OpenApi2XsdNoReferences`: OpenAPI (2.0 or 3.0) component schemas to XML Schema Definitions (XSD won't contain cross-file references, but will bring all required types)

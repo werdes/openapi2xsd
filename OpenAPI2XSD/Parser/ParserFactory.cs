@@ -38,7 +38,7 @@ namespace OpenAPI2XSD.Parser
         {
             switch (mode)
             {
-                case Enums.Mode.OpenApi2Xsd:
+                case Enums.Mode.OpenApi2XsdNoReferences:
                     return _openApi2XsdParser;
                 default:
                     throw new ArgumentException($"Undefined parser for mode [{mode}]");

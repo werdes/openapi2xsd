@@ -11,7 +11,7 @@ namespace OpenAPI2XSD
         public enum Mode
         {
             Undefined,
-            OpenApi2Xsd
+            OpenApi2XsdNoReferences
         }
     }
 }
